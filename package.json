@@ -1,6 +1,6 @@
 {
   "name": "shell",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "packageType": "app",
   "appName": "TV Diagnostic",
   "appPath": "shell.html",

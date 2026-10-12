@@ -6,11 +6,11 @@ var http = require('http');
 var childProcess = require('child_process');
 var CONFIG_PATH = '/home/owner/share/tizenbrew-shell-config.json';
 var DEFAULT_POLL_MS = 2000;
+var DEFAULT_HOST = '192.168.0.73';
+var DEFAULT_PORT = 8009;
 var busy = false;
 
-function loadConfig() {
-  var path = process.env.TIZENBREW_SHELL_CONFIG || CONFIG_PATH;
-  var value = JSON.parse(fs.readFileSync(path, 'utf8'));
+function normalizedConfig(value) {
   if (!value.host || !value.port || !value.token) {
     throw new Error('channel config requires host, port, and token');
   }
@@ -20,6 +20,11 @@ function loadConfig() {
     token: String(value.token),
     pollMs: Number(value.poll_interval_ms || DEFAULT_POLL_MS)
   };
+}
+
+function loadConfig() {
+  var path = process.env.TIZENBREW_SHELL_CONFIG || CONFIG_PATH;
+  return normalizedConfig(JSON.parse(fs.readFileSync(path, 'utf8')));
 }
 
 function request(config, method, path, body, callback) {
@@ -53,6 +58,42 @@ function request(config, method, path, body, callback) {
   req.on('error', function (error) { callback(error); });
   if (payload !== null) req.write(payload);
   req.end();
+}
+function loadOrPairConfig(callback) {
+  var path = process.env.TIZENBREW_SHELL_CONFIG || CONFIG_PATH;
+  try {
+    callback(null, loadConfig());
+    return;
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      callback(error);
+      return;
+    }
+  }
+
+  var value = {
+    host: DEFAULT_HOST,
+    port: DEFAULT_PORT,
+    token: require('crypto').randomBytes(24).toString('hex'),
+    poll_interval_ms: DEFAULT_POLL_MS
+  };
+  var config = normalizedConfig(value);
+  request(config, 'POST', '/pair', {
+    token: value.token,
+    marker: 'tizenbrew-command-channel-pair-v1'
+  }, function (error, status) {
+    if (error || status !== 200) {
+      callback(error || new Error('pairing refused with HTTP ' + status));
+      return;
+    }
+    try {
+      fs.writeFileSync(path, JSON.stringify(value, null, 2) + '\n', { mode: 384 });
+      fs.chmodSync(path, 384);
+      callback(null, config);
+    } catch (writeError) {
+      callback(writeError);
+    }
+  });
 }
 
 function postResult(config, result, done) {
@@ -100,30 +141,29 @@ function poll(config) {
 }
 
 function main() {
-  var config;
-  try {
-    config = loadConfig();
-  } catch (error) {
-    console.error('Command channel configuration failed: ' + error.message);
-    return;
-  }
+  loadOrPairConfig(function (error, config) {
+    if (error) {
+      console.error('Command channel configuration failed: ' + error.message);
+      return;
+    }
 
-  request(config, 'POST', '/result', {
-    id: 'hello-' + process.pid,
-    command: null,
-    error: null,
-    stdout: JSON.stringify({
-      marker: 'tizenbrew-command-channel-v1',
-      pid: process.pid,
-      uid: process.getuid ? process.getuid() : null,
-      gid: process.getgid ? process.getgid() : null,
-      node: process.version,
-      arch: process.arch,
-      platform: process.platform
-    }),
-    stderr: ''
-  }, function () {
-    poll(config);
+    request(config, 'POST', '/result', {
+      id: 'hello-' + process.pid,
+      command: null,
+      error: null,
+      stdout: JSON.stringify({
+        marker: 'tizenbrew-command-channel-v1',
+        pid: process.pid,
+        uid: process.getuid ? process.getuid() : null,
+        gid: process.getgid ? process.getgid() : null,
+        node: process.version,
+        arch: process.arch,
+        platform: process.platform
+      }),
+      stderr: ''
+    }, function () {
+      poll(config);
+    });
   });
 }
 
