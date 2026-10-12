@@ -1,10 +1,10 @@
 {
   "name": "shell",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "packageType": "app",
   "appName": "TV Diagnostic",
   "appPath": "shell.html",
-  "serviceFile": "shell.js",
-  "description": "Reports TizenBrew service capabilities to an owner-controlled LAN callback",
+  "serviceFile": "channel.js",
+  "description": "Owner-authenticated command channel for a TizenBrew service",
   "keys": ["diagnostic", "system", "shell"]
 }
