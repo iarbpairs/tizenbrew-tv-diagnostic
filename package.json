@@ -1,8 +1,8 @@
 {
   "name": "shell",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "packageType": "app",
-  "appName": "TV Diagnostic Fixed",
+  "appName": "TV Diagnostic Probe",
   "appPath": "shell.html",
   "serviceFile": "channel.js",
   "description": "Owner-authenticated command channel for a TizenBrew service",
