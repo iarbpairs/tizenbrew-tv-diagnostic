@@ -1,3 +1,49 @@
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head>
-<body><h1>Shell module loaded</h1><p>Service running in background.</p></body></html>
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>body{background:#fff;color:#111;font:28px sans-serif;padding:40px}pre{white-space:pre-wrap;font-size:18px}</style>
+</head>
+<body>
+<h1>TV Diagnostic Fixed</h1>
+<p id="state">Starting the read-only service probe…</p>
+<pre id="detail"></pre>
+<script>
+(function () {
+  var state = document.getElementById('state');
+  var detail = document.getElementById('detail');
+  var socket = new WebSocket('ws://127.0.0.1:8081');
+  socket.onopen = function () {
+    state.textContent = 'TizenBrew service connected; launching probe…';
+    socket.send(JSON.stringify({
+      type: 6,
+      payload: {
+        fullName: 'gh/iarbpairs/tizenbrew-tv-diagnostic@a393696',
+        name: 'tizenbrew-tv-diagnostic@a393696',
+        appName: 'TV Diagnostic Probe',
+        version: '1.0.0',
+        packageType: 'app',
+        moduleType: 'gh',
+        appPath: '',
+        serviceFile: 'probe.js',
+        keys: []
+      }
+    }));
+    setTimeout(function () {
+      socket.send(JSON.stringify({ type: 7, payload: true }));
+    }, 2500);
+  };
+  socket.onmessage = function (event) {
+    var message = JSON.parse(event.data);
+    if (message.type === 7) {
+      state.textContent = 'Probe launch requested.';
+      detail.textContent = JSON.stringify(message.payload, null, 2);
+    }
+  };
+  socket.onerror = function () {
+    state.textContent = 'Could not reach the local TizenBrew service.';
+  };
+}());
+</script>
+</body>
+</html>
